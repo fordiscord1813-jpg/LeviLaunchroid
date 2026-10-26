@@ -1,3 +1,4 @@
+
 plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.android)
@@ -38,6 +39,7 @@ static def getVersionCodeByTimestamp() {
 android {
     namespace 'org.levimc.launcher'
     compileSdkVersion 36
+
     defaultConfig {
         applicationId "org.levimc.launcher"
         minSdkVersion 28
@@ -45,11 +47,14 @@ android {
         versionCode getVersionCodeByTimestamp()
         versionName getGitTag()
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
+
         buildConfigField "String", "CURSEFORGE_API_KEY", "\"${localProperties.getProperty('curseforge.api_key', '')}\""
+
         ndk {
             //noinspection ChromeOsAbiSupport
             abiFilters 'arm64-v8a'
         }
+
         externalNativeBuild {
             cmake {
                 arguments "-DANDROID_STL=c++_shared"
@@ -59,64 +64,68 @@ android {
 
     buildFeatures {
         viewBinding true
-    }
-    buildFeatures {
         prefab true
-    }
-    buildFeatures {
         buildConfig true
     }
+
     sourceSets {
         main {
             assets.srcDirs += rootProject.file('resources')
         }
     }
+
     buildTypes {
         release {
             minifyEnabled true
             shrinkResources false
             proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
+
             firebaseCrashlytics {
                 mappingFileUploadEnabled true
                 nativeSymbolUploadEnabled true
             }
+
             ndk {
                 debugSymbolLevel 'FULL'
             }
+
             buildConfigField "boolean", "IS_BETA", "false"
         }
+
         debug {
             debuggable false
-            minifyEnabled true
+            minifyEnabled false
             shrinkResources false
-            proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
+
             firebaseCrashlytics {
-                mappingFileUploadEnabled true
-                nativeSymbolUploadEnabled true
+                mappingFileUploadEnabled false
+                nativeSymbolUploadEnabled false
             }
-            ndk {
-                debugSymbolLevel 'FULL'
-            }
+
             buildConfigField "boolean", "IS_BETA", "false"
         }
+
         beta {
             initWith release
             minifyEnabled true
             shrinkResources false
             proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
+
             firebaseCrashlytics {
                 mappingFileUploadEnabled true
                 nativeSymbolUploadEnabled true
             }
+
             resValue "string", "app_name", "LeviLauncher Beta"
             buildConfigField "boolean", "IS_BETA", "true"
             matchingFallbacks = ["release"]
+
             ndk {
                 debugSymbolLevel 'FULL'
             }
         }
-
     }
+
     packagingOptions {
         jniLibs {
             useLegacyPackaging = true
@@ -126,6 +135,7 @@ android {
                     "**/libinbuiltmods.so"
             ]
         }
+
         resources.excludes += [
                 "DebugProbesKt.bin"
         ]
@@ -133,9 +143,11 @@ android {
         resources.pickFirsts += [
                 "META-INF/INDEX.LIST",
                 "META-INF/DEPENDENCIES",
+                "META-INF/io.netty.versions.info",
                 "META-INF/io.netty.versions.properties"
         ]
     }
+
     compileOptions {
         sourceCompatibility JavaVersion.VERSION_21
         targetCompatibility JavaVersion.VERSION_21
@@ -175,8 +187,8 @@ dependencies {
     implementation libs.androidx.browser
     implementation libs.xcrash
     implementation libs.play.services.games.v2
+    implementation libs.glide
     testImplementation libs.junit
     androidTestImplementation libs.ext.junit
     androidTestImplementation libs.espresso.core
-    implementation libs.glide
 }
