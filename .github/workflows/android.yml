@@ -32,7 +32,7 @@ jobs:
 
           if [ -z "${GOOGLE_SERVICES_JSON_BASE64:-}" ]; then
             echo "HAS_GOOGLE_SERVICES=false" >> "$GITHUB_ENV"
-            echo "GOOGLE_SERVICES_JSON_BASE64 is not configured; using a CI-only Firebase placeholder for compile checks."
+            echo "Firebase secret is not configured; using a CI-only placeholder."
             mkdir -p app
             cat > app/google-services.json <<'JSON'
           {
@@ -136,24 +136,29 @@ jobs:
           CF_API_KEY: ${{ secrets.CURSEFORGE_API_KEY }}
         run: echo "curseforge.api_key=${CF_API_KEY}" >> local.properties
 
-      - name: Build Debug, Beta and Unsigned Release APKs
-        if: env.HAS_GOOGLE_SERVICES == 'true'
-        run: ./gradlew assembleDebug assembleBeta assembleRelease
+      - name: Build Debug APK
+        run: ./gradlew :app:assembleDebug
 
-      - name: Compile Debug Without Firebase Secrets
-        if: env.HAS_GOOGLE_SERVICES == 'false'
-        run: ./gradlew :app:compileDebugKotlin :app:compileDebugJavaWithJavac
+      - name: Show generated APK files
+        if: always()
+        run: |
+          echo "Searching for APK files..."
+          find app/build/outputs -type f -name "*.apk" -print || true
+
+      - name: Build Beta and Unsigned Release APKs
+        if: env.HAS_GOOGLE_SERVICES == 'true'
+        run: ./gradlew assembleBeta assembleRelease
 
       - name: Upload Debug APK
-        if: env.HAS_GOOGLE_SERVICES == 'true'
-        uses: actions/upload-artifact@v4.6.2
+        uses: actions/upload-artifact@v4
         with:
           name: LeviLauncher-debug-apk
-          path: app/build/outputs/apk/debug/*.apk
+          path: app/build/outputs/**/*.apk
+          if-no-files-found: error
 
       - name: Upload R8 mappings
         if: env.HAS_GOOGLE_SERVICES == 'true'
-        uses: actions/upload-artifact@v4.6.2
+        uses: actions/upload-artifact@v4
         with:
           name: LeviLauncher-r8-mappings-${{ github.sha }}
           path: |
@@ -164,17 +169,19 @@ jobs:
 
       - name: Upload Unsigned Release APK
         if: env.HAS_GOOGLE_SERVICES == 'true'
-        uses: actions/upload-artifact@v4.6.2
+        uses: actions/upload-artifact@v4
         with:
           name: LeviLauncher-release-unsigned-apk
           path: app/build/outputs/apk/release/*-unsigned.apk
+          if-no-files-found: error
 
       - name: Upload Beta APK
         if: env.HAS_GOOGLE_SERVICES == 'true'
-        uses: actions/upload-artifact@v4.6.2
+        uses: actions/upload-artifact@v4
         with:
           name: LeviLauncher-beta-apk
           path: app/build/outputs/apk/beta/*.apk
+          if-no-files-found: error
 
       - name: Sign Release APK
         if: env.HAS_GOOGLE_SERVICES == 'true' && startsWith(github.ref, 'refs/tags/')
@@ -201,10 +208,11 @@ jobs:
 
       - name: Upload Signed APK Artifact
         if: env.HAS_GOOGLE_SERVICES == 'true' && startsWith(github.ref, 'refs/tags/')
-        uses: actions/upload-artifact@v4.6.2
+        uses: actions/upload-artifact@v4
         with:
           name: LeviLauncher-${{ github.ref_name }}-release.apk
           path: LeviLauncher-${{ github.ref_name }}-release.apk
+          if-no-files-found: error
 
       - name: Generate GitHub release notes
         if: env.HAS_GOOGLE_SERVICES == 'true' && startsWith(github.ref, 'refs/tags/')
@@ -226,6 +234,11 @@ jobs:
           APK_URL: "https://github.com/${{ github.repository }}/releases/download/${{ github.ref_name }}/LeviLauncher-${{ github.ref_name }}-release.apk"
           TAG_NAME: ${{ github.ref_name }}
         run: |
+          if [ -z "${DISCORD_WEBHOOK:-}" ]; then
+            echo "DISCORD_WEBHOOK is not configured; skipping notification."
+            exit 0
+          fi
+
           EMBED_TITLE="🚀 LeviLauncher Update!"
           EMBED_DESC="A new version of **LeviLaunchroid** is ready."
           EMBED_COLOR=5814783
@@ -253,3 +266,4 @@ jobs:
             }]
           }" \
           "$DISCORD_WEBHOOK"
+          
